@@ -5,7 +5,7 @@ userid="Horse1"
 sensors = ["position","temp", "quality"]
 topic = "sensor/"
 #server="172.20.0.22"
-server="192.168.0.106"
+server="192.168.0.102"
 #server ="192.168.10.1"
 #fileserver="192.168.10.1"
 
@@ -34,7 +34,6 @@ def on_message(client, userdata, msg):
 
 def serialize(payload_list,timestamps,topic):
     string_out=str(topic)
-    print(payload_list)
     for entry in payload_list:
         string_out = string_out +"," + str(entry)
     string_out+= ',ts'
@@ -53,8 +52,7 @@ def send_topics(topic_payload,userid,client):
         payload= topic_payload['payload'][i]
         timestamp = topic_payload['ts'][i]
         serialized_input = serialize(payload,timestamp,topic_payload['topic'][i])
-        output = output + "," + serialized_input
-    print(output)     
+        output = output + "," + serialized_input   
     client.publish(full_topic, output)
 
     return
@@ -98,8 +96,6 @@ def prepare_payload(sensors, data, timestamps):
     for t in timestamps:
         
         payload["ts"].append(t)
-    print(payload["ts"])
-    print(payload["payload"])
     return payload
     
     

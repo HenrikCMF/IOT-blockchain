@@ -3,13 +3,13 @@ import paho.mqtt.client as mqtt
 import util
 import os
 import threading
-#import pymobiledevice.util as util
-#import sensor_api as sapi 
-#import smbus
+import PI_sensors
 msg_mutex=threading.Lock()
 msg_received=0
 my_name=None
 client = mqtt.Client()
+
+sleeptime=0
 ####client.subscribe("my/topic")
 # The callback for when the client receives a CONNACK response from the server.
 def set_mutex(inputs):
@@ -41,8 +41,10 @@ def on_message(client, userdata, msg):
         file.close()
         my_name=str(format(msg.payload.decode("utf-8")))
         set_mutex(1)
-    if str(msg.topic)=='Pinger':
+    elif str(msg.topic)=='Pinger':
         set_mutex(1)
+    elif str(msg.topic)=='parameters'+my_name:
+        sleeptime=float(format(msg.payload.decode("utf-8")))
     
 
 
@@ -95,15 +97,8 @@ else:
         print('my name is:',my_name)
     file.close()
     remember_me()
-#client.loop_start()
-# intialize sensors, so we can get data out 
-# Specific configuraiton for sensors we used - outcommented for now, we should get a hold of some of the same sensors again
-# bus = smbus.SMBus(1)  # Rev 2 Pi uses 1
-# sensor = sapi.BH1750(bus)
-# bme680_sensor = sapi.sensor_bme680()  # Temperature, and Humidity sensor
-# sgp30_sensor = sapi.sensor_sgp30() # Air quality sensor
+client.subscribe('parameters'+my_name)
 
-######################### Logic for furter programming #######################
 
 counter = 0
 arr_size = 1
@@ -126,78 +121,44 @@ timestamps_pos = [0] * arr_size
 
 
 
-time.sleep(1)
-# acquiring data with the specific sensors - can be ignored
+while 1:
+    temp_sample, ts_temp = util.rand_sample()
 
-# #Temperature sample in celcius
-# temp_sample, ts_temp = bme680_sensor.get_temp()
-# #print(temp_sample, ts_temp)
-# data_temp[counter] = temp_sample
-# timestamps_temp[counter] = ts_temp
-# #Humidity sample
-# humidity_sample, ts_humid = bme680_sensor.get_humidity()
-# data_humidity[counter] = humidity_sample
-# timestamps_humidity[counter] = ts_humid
-# #Pressure sample
-# pressure_sample, ts_pressure = bme680_sensor.get_pressure()
-# data_pressure[counter] = pressure_sample
-# timestamps_pressure[counter] = ts_pressure
+    #data_temp[counter] = temp_sample
+    data_temp[counter] = 2
+    timestamps_temp[counter] = ts_temp
 
-# #airquality (CO2)
-# airqual_sample, ts_qual = sgp30_sensor.get_sample()
-# data_airquality[counter] = airqual_sample
-# timestamps_airquality[counter] = ts_qual
-
-# #Light samples Lx
-# sample,ts = sensor.measure_low_res()
-# data_lowres[counter] = sample
-# timestamps_lowres[counter] = ts
-
-# sample, ts = sensor.measure_high_res()
-# data_highres[counter] = sample
-# timestamps_highres[counter] = ts
-# sample, ts = sensor.measure_high_res2()
-# data_highres2[counter] = sample
-# timestamps_highres2[counter] = ts
-# sensor.set_sensitivity((sensor.mtreg + 10) % 255)
-temp_sample, ts_temp = util.rand_sample()
-
-#data_temp[counter] = temp_sample
-data_temp[counter] = 2
-timestamps_temp[counter] = ts_temp
-
-airqual_sample, ts_qual = util.rand_sample()
-data_airquality[counter] = airqual_sample
-timestamps_airquality[counter] = ts_qual
-pos_sample, ts_pos = util.rand_sample()
-data_pos[counter] = 1
-timestamps_pos[counter] = ts_pos
-counter+=1
-if counter == arr_size:
-    extra_counter+=1
-    counter = 0
-    client.loop_start()
-    data=util.prepare_payload([util.sensors[0]+" "+my_name,
-    util.sensors[1]+" "+my_name, util.sensors[2]+" "+my_name], 
-    [data_pos,data_temp, data_airquality] ,
-    [timestamps_pos, timestamps_temp, timestamps_airquality])
-    
-    util.send_topics(data,userid,client)
-
-    data_temp = [0] * arr_size 
-    timestamps_temp = [0] * arr_size
-
-
-    data_airquality = [0] * arr_size
-    timestamps_airquality = [0] * arr_size
-    
-    if extra_counter == 1:
+    airqual_sample, ts_qual = util.rand_sample()
+    data_airquality[counter] = airqual_sample
+    timestamps_airquality[counter] = ts_qual
+    pos_sample, ts_pos = util.rand_sample()
+    data_pos[counter] = 1
+    timestamps_pos[counter] = ts_pos
+    counter+=1
+    if counter == arr_size:
+        extra_counter+=1
+        counter = 0
+        client.loop_start()
+        data=util.prepare_payload([util.sensors[0]+" "+my_name,
+        util.sensors[1]+" "+my_name, util.sensors[2]+" "+my_name], 
+        [data_pos,data_temp, data_airquality] ,
+        [timestamps_pos, timestamps_temp, timestamps_airquality])
         
-        while(1):
-            time.sleep(3)
-            util.send_topics(data,userid,client)
-            #client.publish(util.topic+'multiple', 'test')
+        util.send_topics(data,userid,client)
+
+        data_temp = [0] * arr_size 
+        timestamps_temp = [0] * arr_size
+
+
+        data_airquality = [0] * arr_size
+        timestamps_airquality = [0] * arr_size
+
+        
+        util.send_topics(data,userid,client)
+        time.sleep(1)
+        client.loop_stop()
+        time.sleep(sleeptime)
+
 
                     
         
-        #exit()
