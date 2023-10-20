@@ -10,6 +10,7 @@ connection = pymongo.MongoClient("mongodb://root:example@172.20.0.19")
 
 sensor_amount=0
 sensors=[]
+last_humidity=0
 #connection = pymongo.MongoClient("mongodb://root:example@130.225.57.224/")
 
 connection.server_info()
@@ -177,6 +178,7 @@ def on_connect(client, userdata, flags, rc):
 def on_message(client, userdata, msg):
     global sensor_amount
     global sensors
+    global last_humidity
     #print(msg.topic+" "+str(msg.payload))
     now = datetime.now()
     received_timestamp = now.strftime("%d/%H:%M:%S")
@@ -204,6 +206,14 @@ def on_message(client, userdata, msg):
     if str(msg.topic) == util.topic+"multiple":
         New_sensor_topic='test'
         topics, payloads, sample_timestamps= find_generic_topics(payload)
+        for i in range(len(topics)):
+            if "quality" in topics[i]:
+                variance=float(payloads[i][0])-last_humidity
+                last_humidity=float(payloads[i][0])
+                sleeptime=-35.4*variance+3600
+                if sleeptime>3600:
+                    sleeptime=3600
+                client.publish("parameters"+topics[0][-3:], sleeptime)
         if len(payloads)==0:
             err="was any sensor data sent?"
             message='payload=0'
@@ -233,7 +243,6 @@ def on_message(client, userdata, msg):
                 print("error")
                 #add error output to database?
                 return -1
-        client.publish(New_sensor_topic, message)
             
 
     #else:
