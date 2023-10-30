@@ -1,19 +1,21 @@
 import paho.mqtt.client as mqtt
-import pymongo
+##import pymongo
 import os
 import util
 from datetime import datetime
 import time
+import csv
 # root is username, example is password and ip is the docker container's ip
-connection = pymongo.MongoClient("mongodb://root:example@172.20.0.19")
+##connection = pymongo.MongoClient("mongodb://root:example@172.20.0.19")
 # ip of mqtt_mongo_1
-
 sensor_amount=0
 sensors=[]
 last_humidity=0
+directory=os.getcwd()
+csv_file=directory+'/files/'+'sensor_data.csv'
 #connection = pymongo.MongoClient("mongodb://root:example@130.225.57.224/")
 
-connection.server_info()
+##connection.server_info()
 # verify connection client.server_info()
 #connection.list_database_names()
 
@@ -27,7 +29,7 @@ def database_generic():
 
     return
 
-def database_add_error(userid, errormsg):
+#def database_add_error(userid, errormsg):
     db = connection["sensor"]# - create db we should use "test"
     database = db["error"]# - document, we should use [test,light,etc.]
     db_data=[]
@@ -39,7 +41,7 @@ def database_add_error(userid, errormsg):
 
 
 
-def database_add(topic, payload, sample_timestamps, received_timestamps,userid):
+#def database_add(topic, payload, sample_timestamps, received_timestamps,userid):
     db = connection["sensor"]# - create db we should use "test"
     database = db[topic]# - document, we should use [test,light,etc.]
     db_data = []
@@ -52,14 +54,9 @@ def database_add(topic, payload, sample_timestamps, received_timestamps,userid):
 
 #sensors = ["temp", "light"]
 
-def write_to_file(name, data):
-    directory=os.getcwd()
-    f= open(directory + "/files/" + name+".csv", 'w')
-    for line in data:
-        f.write(line)
-        f.write("\n")
+
     
-def database_export(userid, topic_type):
+#def database_export(userid, topic_type):
     print("exporting data for user", userid)
     mydb = connection[str(util.topic[:-1])]
     collections = mydb.list_collection_names()
@@ -91,6 +88,12 @@ def database_export(userid, topic_type):
         write_to_file(userid,export_set)
     return
 
+def write_to_file(name, data):
+    directory=os.getcwd()
+    f= open(directory + "/files/" + name+".csv", 'w')
+    for line in data:
+        f.write(line)
+        f.write("\n")
 
 def find_generic_topics(payload):
     topics = []
@@ -179,6 +182,7 @@ def on_message(client, userdata, msg):
     global sensor_amount
     global sensors
     global last_humidity
+    global csv_file
     #print(msg.topic+" "+str(msg.payload))
     now = datetime.now()
     received_timestamp = now.strftime("%d/%H:%M:%S")
@@ -196,7 +200,7 @@ def on_message(client, userdata, msg):
         return
     if str(msg.topic)==util.topic+'download':
         sensor_type=payload[0]
-        database_export(userid,sensor_type)
+        #database_export(userid,sensor_type)
     elif msg.topic in sensors:
         New_sensor_topic='Pinger'
         message='hello'
@@ -219,27 +223,38 @@ def on_message(client, userdata, msg):
             message='payload=0'
         if len(topics)!= len(payloads):
             err="The amount of topics and payloads is not the same"
-            database_add_error(userid, err)
+            #database_add_error(userid, err)
             print(err)
             message='topics!=payloads'
             client.publish(New_sensor_topic, message)
             return -1
         message=""
+        
+        #with open(csv_file, 'w') as file:
+         #   file.close()
+
         for i in range(len(topics)):
             received_timestamps = [received_timestamp]*len(payloads[i])
             if len(sample_timestamps[i])==1:
                 print("single ts, so we add more")
                 corrected_ts=[sample_timestamps[i][0]] * len(payloads[i])
-                database_add(topics[i], payloads[i],corrected_ts, received_timestamps ,userid)
+                #database_add(topics[i], payloads[i],corrected_ts, received_timestamps ,userid)
+                data_to_append=[topics[i], payloads[i],corrected_ts, received_timestamps ,userid]
+                with open(csv_file, 'a') as file:
+                    writer = csv.writer(file)
+                    writer.writerow(data_to_append)
+                    file.close()
+                print(topics[i], payloads[i],corrected_ts, received_timestamps ,userid)
                 message+=topics[i]+str(payloads[i])+str(corrected_ts)+str(received_timestamp)+str(userid)
             elif len(sample_timestamps[i]) == len(payloads[i]):
                 print("same length of timestamps and payloads")
                 message='timestamp=payload'+userid
-                database_add(topics[i], payloads[i],sample_timestamps[i], received_timestamps ,userid)
+                #database_add(topics[i], payloads[i],sample_timestamps[i], received_timestamps ,userid)
+                print(topics[i], payloads[i],sample_timestamps[i], received_timestamps ,userid)
             else:
                 err="Something went wrong, length of timestamps for entry", i," was:",
                 len(sample_timestamps[i]), "expected 1 timestamp, or", len(payloads[i]) 
-                database_add_error(userid, err)
+                #database_add_error(userid, err)
                 print("error")
                 #add error output to database?
                 return -1
@@ -267,6 +282,10 @@ def on_message(client, userdata, msg):
 #database.drop()
 #database = db["quality"]# - document, we should use [test,light,etc.]
 #database.drop()
+
+
+with open(csv_file, 'w') as file:
+    file.close()
 client.on_connect = on_connect
 client.on_message = on_message
 
@@ -281,4 +300,5 @@ client.connect(util.server,1883,60)
 #client.loop_forever()
 client.loop_start()
 while(1):
+    #print("test")
     time.sleep(1)

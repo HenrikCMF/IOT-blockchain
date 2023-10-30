@@ -3,7 +3,7 @@ userid="Horse1"
 sensors = ["position", "temp", "quality"]
 topic = "sensor/"
 #server="130.225.57.224"
-server="192.168.0.106"
+server="192.168.0.103"
 #server ="172.20.0.22"
 #fileserver="172.20.0.21"
 
