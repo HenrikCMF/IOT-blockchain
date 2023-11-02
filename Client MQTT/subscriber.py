@@ -236,15 +236,14 @@ def on_message(client, userdata, msg):
         for i in range(len(topics)):
             received_timestamps = [received_timestamp]*len(payloads[i])
             if len(sample_timestamps[i])==1:
-                print("single ts, so we add more")
                 corrected_ts=[sample_timestamps[i][0]] * len(payloads[i])
                 #database_add(topics[i], payloads[i],corrected_ts, received_timestamps ,userid)
-                data_to_append=[topics[i], payloads[i],corrected_ts, received_timestamps ,userid]
+                data_to_append=[topics[i], payloads[i],str(corrected_ts)[2:-1] ,userid]
                 with open(csv_file, 'a') as file:
                     writer = csv.writer(file)
                     writer.writerow(data_to_append)
                     file.close()
-                print(topics[i], payloads[i],corrected_ts, received_timestamps ,userid)
+                #print(topics[i], payloads[i],corrected_ts, received_timestamps ,userid)
                 message+=topics[i]+str(payloads[i])+str(corrected_ts)+str(received_timestamp)+str(userid)
             elif len(sample_timestamps[i]) == len(payloads[i]):
                 print("same length of timestamps and payloads")
